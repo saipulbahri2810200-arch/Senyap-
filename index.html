@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title id="tt">Senyap</title>
+<style>
+:root{--bg:#07060b;--s:#110e1a;--l:#1c1730;--p:#8b5cf6;--t:#ebe8f7;--m:#847f9e}
+*{box-sizing:border-box;margin:0;font-family:"Avenir Next",Avenir,"Segoe UI",system-ui,sans-serif}
+html,body{height:100%}
+body{background:var(--bg);color:var(--t);font-size:15px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea{-webkit-user-select:text;user-select:text}
+body.blur #app,body.blur #login{filter:blur(24px)}
+@media print{body{display:none}}
+.scr{position:fixed;inset:0;display:none;flex-direction:column}
+.scr.on{display:flex}
+.c{margin:auto;width:min(340px,88vw);display:flex;flex-direction:column;gap:12px}
+h1{font-size:30px;font-weight:300;letter-spacing:.02em}
+p.m{color:var(--m);font-size:13px;line-height:1.5}
+input,textarea{background:var(--s);border:1px solid var(--l);color:var(--t);padding:12px 14px;border-radius:10px;font-size:15px;outline:0;width:100%}
+input:focus,textarea:focus{border-color:var(--p)}
+button{background:var(--p);color:#fff;border:0;padding:12px 16px;border-radius:10px;font-size:15px;cursor:pointer}
+button.g{background:var(--l);color:var(--t)}
+button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+header{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--l);padding-top:max(12px,env(safe-area-inset-top))}
+header b{font-weight:400;flex:1}
+header button{padding:8px 11px}
+.tabs{display:flex;border-bottom:1px solid var(--l)}
+.tabs button{flex:1;background:0;color:var(--m);border-radius:0;border-bottom:2px solid transparent}
+.tabs button.on{color:var(--t);border-color:var(--p)}
+.pane{padding:14px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+.row{display:flex;gap:8px}
+.item{background:var(--s);padding:14px;border-radius:10px;cursor:pointer;display:flex;justify-content:space-between}
+#msgs{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
+.m{max-width:82%;padding:9px 12px;border-radius:14px;background:var(--s);align-self:flex-start;word-break:break-word}
+.m.me{background:var(--p);align-self:flex-end}
+.m small{display:block;color:var(--m);font-size:11px;margin-bottom:2px}
+.m.me small{color:#e3d9ff}
+.q{border-left:2px solid #fff6;padding-left:8px;margin-bottom:5px;font-size:12px;opacity:.75}
+.m button{padding:6px 10px;font-size:13px;margin-top:4px}
+#bar{padding:10px;border-top:1px solid var(--l);display:flex;flex-direction:column;gap:8px;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+#rp{font-size:12px;color:var(--m);display:none}
+#fake{background:#fff;color:#222;padding:24px;z-index:9}
+#fake *{font-family:Georgia,serif;-webkit-user-select:text;user-select:text}
+</style></head>
+<body>
+
+<div class="scr" id="lock"><div class="c">
+<h1>Terkunci</h1><input id="pin" type="password" placeholder="Kode akses">
+<button id="unl">Buka</button><p class="m" id="lerr"></p></div></div>
+
+<div class="scr" id="login"><div class="c">
+<h1>Senyap</h1>
+<p class="m">Ngobrol tanpa akun. Pesan dienkripsi di perangkatmu dan hilang setelah 4 jam.</p>
+<input id="un" maxlength="24" placeholder="Nama samaran (bebas)">
+<button id="go">Masuk</button><p class="m" id="lgerr"></p></div></div>
+
+<div class="scr" id="app">
+<header><b id="hi"></b><button class="g" id="fk" title="Mode samaran">Samar</button><button class="g" id="sl">Kunci</button></header>
+<div class="tabs"><button id="tc" class="on">Chat</button><button id="tk">Komunitas</button></div>
+<div class="pane" id="pc">
+<p class="m">Masukkan kode rahasia. Siapa pun yang memakai kode yang sama masuk ke ruang yang sama.</p>
+<div class="row"><input id="code" type="password" placeholder="Kode ruang"><button id="jc">Masuk</button></div></div>
+<div class="pane" id="pk" style="display:none">
+<div class="row"><input id="cn" maxlength="30" placeholder="Nama komunitas baru"><button id="mk">Buat</button></div>
+<div id="cl" style="display:flex;flex-direction:column;gap:8px"></div></div>
+</div>
+
+<div class="scr" id="room">
+<header><button class="g" id="bk">Kembali</button><b id="rn"></b></header>
+<div id="msgs"></div>
+<div id="bar"><div id="rp"></div>
+<div class="row"><input id="mi" placeholder="Tulis pesan" autocomplete="off"><button id="sd">Kirim</button></div>
+<div class="row"><button class="g" id="fb">Lampirkan file</button><input id="fi" type="file" hidden></div></div>
+</div>
+
+<div class="scr" id="fake"><h2>Catatan belanja</h2><br><p>- Beras 5 kg<br>- Telur<br>- Minyak goreng<br>- Sabun cuci</p><br><p id="fh" style="color:#aaa;font-size:12px">Ketuk judul 3 kali untuk kembali.</p></div>
+
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getAuth,signInAnonymously}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import{getFirestore,collection,addDoc,setDoc,doc,query,where,orderBy,onSnapshot,serverTimestamp,Timestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// GANTI dengan config dari Firebase Console > Project settings > Your apps
+const cfg={apiKey:"AIzaSyDoVEgdM_obugPac-HVwZkYDTOxnAxQZ5w",authDomain:"anonymous-489c1.firebaseapp.com",projectId:"anonymous-489c1",appId:"1:287414560392:web:a5fd6bb696668c2434213d"};
+const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
+const $=i=>document.getElementById(i),show=i=>{document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));$(i).classList.add('on')};
+const TTL=4*3600e3,MAXF=600*1024;
+let me='',uid='',key=null,rid='',unsub=null,reply=null,prev='lock';
+
+/* Kripto: AES-GCM 256, kunci dari PBKDF2(kode). Server hanya melihat ciphertext. */
+const te=new TextEncoder(),td=new TextDecoder();
+const b64=b=>{let s='',a=new Uint8Array(b);for(let i=0;i<a.length;i+=8192)s+=String.fromCharCode(...a.subarray(i,i+8192));return btoa(s)};
+const ub=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const sha=async s=>b64(await crypto.subtle.digest('SHA-256',te.encode(s)));
+async function derive(code){
+ const k=await crypto.subtle.importKey('raw',te.encode(code),'PBKDF2',false,['deriveKey']);
+ const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:te.encode('senyap-v1'),iterations:200000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+ return{key,id:(await sha('id:'+code)).replace(/[^a-z0-9]/gi,'').slice(0,28)}}
+async function seal(o){const iv=crypto.getRandomValues(new Uint8Array(12));return{iv:b64(iv),ct:b64(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,te.encode(JSON.stringify(o))))}}
+async function unseal(d){try{return JSON.parse(td.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(d.iv)},key,ub(d.ct))))}catch{return null}}
+
+/* Kunci kode akses aplikasi */
+const lk=()=>localStorage.getItem('lk');
+$('unl').onclick=async()=>{if(await sha($('pin').value)===lk()){$('pin').value='';show('login')}else $('lerr').textContent='Kode salah.'};
+$('sl').onclick=async()=>{const p=prompt('Kode akses baru (kosongkan untuk menghapus):');if(p===null)return;p?localStorage.setItem('lk',await sha(p)):localStorage.removeItem('lk')};
+
+/* Masuk anonim */
+$('go').onclick=async()=>{me=$('un').value.trim();if(!me){$('lgerr').textContent='Isi nama samaran dulu.';return}
+ try{uid=(await signInAnonymously(auth)).user.uid;$('hi').textContent=me;show('app')}
+ catch(e){$('lgerr').textContent=cfg.apiKey==='ISI'?'Config Firebase belum diisi di index.html.':'Gagal masuk ('+(e.code||e.message)+'). Cek Anonymous di Authentication dan domain di Authorized domains.'}};
+
+/* Tab */
+const tab=k=>{$('pc').style.display=k?'none':'flex';$('pk').style.display=k?'flex':'none';$('tc').classList.toggle('on',!k);$('tk').classList.toggle('on',k)};
+$('tc').onclick=()=>tab(0);$('tk').onclick=()=>tab(1);
+
+/* Komunitas */
+onSnapshot(query(collection(db,'communities'),orderBy('ts','desc')),s=>{
+ $('cl').innerHTML='';s.forEach(d=>{const n=d.data().name,e=document.createElement('div');e.className='item';e.textContent=n;
+ e.onclick=()=>enter('komunitas:'+n.toLowerCase(),n);$('cl').append(e)})},()=>{});
+$('mk').onclick=async()=>{const n=$('cn').value.trim();if(!n)return;
+ await setDoc(doc(db,'communities',(await sha(n.toLowerCase())).replace(/[^a-z0-9]/gi,'').slice(0,20)),{name:n,ts:serverTimestamp()});$('cn').value=''};
+$('jc').onclick=()=>{const c=$('code').value;if(c.length<6){alert('Kode minimal 6 karakter.');return}enter(c,'Ruang pribadi');$('code').value=''};
+
+/* Ruang */
+async function enter(code,name){
+ const d=await derive(code);key=d.key;rid=d.id;$('rn').textContent=name;$('msgs').innerHTML='';reply=null;$('rp').style.display='none';show('room');
+ unsub&&unsub();
+ const q=query(collection(db,'rooms',rid,'m'),where('exp','>',Timestamp.now()),orderBy('exp'));
+ unsub=onSnapshot(q,async s=>{const box=$('msgs');box.innerHTML='';
+  for(const x of s.docs){const m=await unseal(x.data());if(m)draw(m,x.data().uid===uid)}
+  box.scrollTop=box.scrollHeight})}
+function draw(m,mine){
+ const e=document.createElement('div');e.className='m'+(mine?' me':'');
+ const sm=document.createElement('small');sm.textContent=m.u;e.append(sm);
+ if(m.r){const q=document.createElement('div');q.className='q';q.textContent=m.r.u+': '+m.r.t;e.append(q)}
+ if(m.t){const t=document.createElement('div');t.textContent=m.t;e.append(t)}
+ if(m.f){const b=document.createElement('button');b.className='g';b.textContent='Unduh '+m.f.n;
+  b.onclick=ev=>{ev.stopPropagation();const a=document.createElement('a');a.href='data:'+m.f.y+';base64,'+m.f.d;a.download=m.f.n;a.click()};e.append(b)}
+ e.onclick=()=>{reply={u:m.u,t:(m.t||m.f?.n||'').slice(0,60)};$('rp').style.display='block';$('rp').textContent='Membalas '+reply.u+': '+reply.t+' (ketuk untuk batal)'};
+ $('msgs').append(e)}
+$('rp').onclick=()=>{reply=null;$('rp').style.display='none'};
+async function send(o){
+ const p=await seal({u:me,r:reply,...o});reply=null;$('rp').style.display='none';
+ await addDoc(collection(db,'rooms',rid,'m'),{...p,uid,ts:serverTimestamp(),exp:Timestamp.fromMillis(Date.now()+TTL)})}
+$('sd').onclick=async()=>{const t=$('mi').value.trim();if(!t)return;$('mi').value='';await send({t})};
+$('mi').onkeydown=e=>e.key==='Enter'&&$('sd').click();
+$('fb').onclick=()=>$('fi').click();
+$('fi').onchange=async()=>{const f=$('fi').files[0];$('fi').value='';if(!f)return;
+ if(f.size>MAXF){alert('Ukuran file maksimal 600 KB.');return}
+ await send({f:{n:f.name,y:f.type||'application/octet-stream',d:b64(await f.arrayBuffer())}})};
+$('bk').onclick=()=>{unsub&&unsub();key=null;show('app')};
+
+/* Mode samaran: Esc atau tombol Samar */
+const dis=on=>{if(on){prev=document.querySelector('.scr.on').id;show('fake');document.title='Catatan'}else{show(prev);document.title='Senyap'}};
+$('fk').onclick=()=>dis(1);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('fake').classList.contains('on'))dis(1)});
+let n=0,tm;document.querySelector('#fake h2').onclick=()=>{clearTimeout(tm);if(++n>=3){n=0;dis(0)}tm=setTimeout(()=>n=0,900)};
+
+/* Anti-salin & anti-tangkap layar (pencegahan terbatas di web) */
+['copy','cut','contextmenu','dragstart'].forEach(v=>document.addEventListener(v,e=>{if(!/INPUT|TEXTAREA/.test(e.target.tagName))e.preventDefault()}));
+const bl=on=>document.body.classList.toggle('blur',on);
+addEventListener('blur',()=>bl(1));addEventListener('focus',()=>bl(0));
+document.addEventListener('visibilitychange',()=>bl(document.hidden));
+addEventListener('keyup',e=>{if(e.key==='PrintScreen'){navigator.clipboard?.writeText('').catch(()=>{});bl(1);setTimeout(()=>bl(0),1500)}});
+
+show(lk()?'lock':'login');
+</script>
+</body></html>
